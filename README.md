@@ -1,3 +1,12 @@
+---
+title: VoxMood
+emoji: 🎙️
+colorFrom: purple
+colorTo: blue
+sdk: docker
+pinned: false
+---
+
 # 🎙️ VoxMood — Speech Emotion Recognition System
 
 A production-ready full-stack web application that detects human emotions from audio using machine learning.

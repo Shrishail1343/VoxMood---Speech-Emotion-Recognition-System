@@ -17,13 +17,13 @@ ENV PATH="/home/user/.local/bin:$PATH"
 WORKDIR /app
 
 # Copy and install Python dependencies
-COPY --chown=user VoxMood/requirements.txt requirements.txt
+COPY --chown=user requirements.txt requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir gunicorn
 
 # Copy the entire project
-COPY --chown=user VoxMood/ .
+COPY --chown=user . .
 
 # Create needed directories
 RUN mkdir -p static/uploads database model

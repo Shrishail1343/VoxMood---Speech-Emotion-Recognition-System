@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoxMood — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;1,9..40,300&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav class="navbar">
+    <a class="brand" href="/">
+        <span class="brand-icon">🎙️</span>
+        <span>VoxMood</span>
+    </a>
+    <div class="nav-links">
+        <a href="/" class="nav-link">Analyze</a>
+        <a href="/dashboard" class="nav-link active">Dashboard</a>
+    </div>
+</nav>
+
+<!-- ── Dashboard Header ── -->
+<section class="dash-header">
+    <div class="container">
+        <div class="dash-header-content">
+            <div>
+                <h1 class="dash-title">Analytics Dashboard</h1>
+                <p class="dash-subtitle">{{ total }} total analyses recorded</p>
+            </div>
+            <a href="/" class="btn btn--primary">
+                + New Analysis
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ── Charts Row ── -->
+<section class="dash-charts-section">
+    <div class="container">
+        <div class="dash-charts-grid">
+
+            <!-- Distribution Bar Chart -->
+            <div class="dash-chart-card">
+                <h3 class="chart-title">Emotion Distribution</h3>
+                <div class="chart-wrapper">
+                    <canvas id="dist-bar-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Pie Chart -->
+            <div class="dash-chart-card">
+                <h3 class="chart-title">Emotion Share</h3>
+                <div class="chart-wrapper">
+                    <canvas id="dist-pie-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Timeline Chart -->
+            <div class="dash-chart-card dash-chart-card--full">
+                <h3 class="chart-title">Emotion Timeline (recent analyses)</h3>
+                <div class="chart-wrapper chart-wrapper--timeline">
+                    <canvas id="emotion-timeline-chart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- ── Prediction History Table ── -->
+<section class="dash-table-section">
+    <div class="container">
+        <div class="table-card">
+            <div class="table-header">
+                <h3 class="chart-title">Prediction History</h3>
+                <div class="table-search">
+                    <input type="text" id="table-search" placeholder="Filter by emotion..."
+                           class="search-input">
+                </div>
+            </div>
+
+            {% if predictions %}
+            <div class="table-responsive">
+                <table class="dash-table" id="predictions-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>File</th>
+                            <th>Emotion</th>
+                            <th>Confidence</th>
+                            <th>Duration</th>
+                            <th>Timestamp</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pred in predictions %}
+
+                        {# ── Emoji map covers ALL HuggingFace label variants ── #}
+                        {% set emotion_icons = {
+                            'Happy':     '😊',
+                            'Sad':       '😢',
+                            'Angry':     '😠',
+                            'Neutral':   '😐',
+                            'Calm':      '😐',
+                            'Fear':      '😨',
+                            'Fearful':   '😨',
+                            'Surprise':  '😲',
+                            'Surprised': '😲',
+                            'Disgust':   '🤢'
+                        } %}
+
+                        <tr class="table-row" data-emotion="{{ pred.predicted_emotion }}">
+                            <td class="td-id">{{ pred.id }}</td>
+                            <td class="td-file">
+                                <span class="file-name-cell" title="{{ pred.filename }}">
+                                    {{ pred.filename[:30] }}{% if pred.filename|length > 30 %}...{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="emotion-badge emotion-badge--{{ pred.predicted_emotion | lower }}">
+                                    {{ emotion_icons.get(pred.predicted_emotion, '🎤') }}
+                                    {{ pred.predicted_emotion }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="confidence-cell">
+                                    <div class="mini-bar">
+                                        <div class="mini-bar-fill"
+                                             style="width: {{ pred.confidence }}%"></div>
+                                    </div>
+                                    <span class="conf-num">{{ pred.confidence | round(1) }}%</span>
+                                </div>
+                            </td>
+                            <td>{{ "%.1f"|format(pred.duration or 0) }}s</td>
+                            <td class="td-time">{{ pred.timestamp[:16] }}</td>
+                            <td>
+                                <div class="action-btns">
+                                    <a href="/result/{{ pred.id }}" class="btn-icon btn-icon--view"
+                                       title="View Result">👁</a>
+                                    <a href="/report/{{ pred.id }}" class="btn-icon btn-icon--report"
+                                       title="Download Report">📄</a>
+                                    <form action="/delete/{{ pred.id }}" method="post"
+                                          onsubmit="return confirm('Delete this record?')"
+                                          style="display:inline">
+                                        <button type="submit" class="btn-icon btn-icon--delete"
+                                                title="Delete">🗑</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">🎙️</div>
+                <h3>No analyses yet</h3>
+                <p>Upload your first audio file to get started.</p>
+                <a href="/" class="btn btn--primary">Start Analyzing</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer class="footer">
+    <p>VoxMood © 2026 — Speech Emotion Recognition System</p>
+</footer>
+
+<!-- Pass data to JS -->
+<script>
+    const DISTRIBUTION    = {{ distribution | safe }};
+    const RECENT          = {{ recent | safe }};
+    const EMOTION_COLORS  = {{ emotion_colors | safe }};
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

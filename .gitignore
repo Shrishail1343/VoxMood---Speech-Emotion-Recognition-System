@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (temp files)
+VoxMood/static/uploads/*
+!VoxMood/static/uploads/.gitkeep
+
+# Model files (large binaries - optional, remove if you want to include them)
+# VoxMood/model/*.pkl
+# VoxMood/model/*.h5
+
+# Database
+VoxMood/database/*.db
+
+# Logs
+*.log
+
+# Environment variables
+.env

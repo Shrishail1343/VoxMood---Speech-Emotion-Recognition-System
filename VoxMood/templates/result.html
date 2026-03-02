@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoxMood — {{ prediction.predicted_emotion }} Detected</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;1,9..40,300&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+{% set emotion_icons = {
+    'Happy':     '😊',
+    'Sad':       '😢',
+    'Angry':     '😠',
+    'Neutral':   '😐',
+    'Calm':      '😐',
+    'Fear':      '😨',
+    'Fearful':   '😨',
+    'Surprise':  '😲',
+    'Surprised': '😲',
+    'Disgust':   '🤢'
+} %}
+
+<!-- ── Navigation ── -->
+<nav class="navbar">
+    <a class="brand" href="/">
+        <span class="brand-icon">🎙️</span>
+        <span>VoxMood</span>
+    </a>
+    <div class="nav-links">
+        <a href="/" class="nav-link">Analyze</a>
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+    </div>
+</nav>
+
+<!-- ── Result Hero ── -->
+<section class="result-hero" style="--emotion-color: {{ prediction.predicted_emotion | lower }}">
+    <div class="result-hero-bg"></div>
+    <div class="container">
+        <div class="result-emotion-display" id="emotion-display">
+            <div class="result-emoji" id="result-emoji">
+                {{ emotion_icons.get(prediction.predicted_emotion, '🎤') }}
+            </div>
+            <h1 class="result-emotion-name" id="result-name"
+                style="color: var(--color-{{ prediction.predicted_emotion | lower }}, #fff)">
+                {{ prediction.predicted_emotion }}
+            </h1>
+            <div class="result-confidence-ring">
+                <svg class="confidence-svg" viewBox="0 0 120 120">
+                    <circle class="confidence-track" cx="60" cy="60" r="50"
+                            fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+                    <circle class="confidence-fill" cx="60" cy="60" r="50"
+                            fill="none" stroke="currentColor" stroke-width="8"
+                            stroke-linecap="round"
+                            stroke-dasharray="{{ (prediction.confidence / 100 * 314.16) | round(2) }} 314.16"
+                            stroke-dashoffset="78.54"
+                            id="confidence-circle"/>
+                    <text x="60" y="56" text-anchor="middle" class="conf-pct"
+                          fill="white" font-size="22" font-weight="700">
+                        {{ prediction.confidence | round(1) }}%
+                    </text>
+                    <text x="60" y="72" text-anchor="middle" fill="rgba(255,255,255,0.6)"
+                          font-size="10">confidence</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Analysis Details ── -->
+<section class="analysis-section">
+    <div class="container">
+
+        <!-- AI Suggestion Card -->
+        <div class="suggestion-card">
+            <div class="suggestion-icon">💡</div>
+            <div class="suggestion-text">
+                <h3>AI Insight</h3>
+                <p>{{ prediction.suggestion }}</p>
+            </div>
+        </div>
+
+        <!-- Metadata Row -->
+        <div class="meta-row">
+            <div class="meta-item">
+                <span class="meta-label">File</span>
+                <span class="meta-value">{{ prediction.filename }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Duration</span>
+                <span class="meta-value">{{ "%.1f"|format(prediction.duration or 0) }}s</span>
+            </div>
+            <div class="meta-item">
+                <span class="meta-label">Analyzed</span>
+                <span class="meta-value">{{ prediction.timestamp[:16] }}</span>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+
+            <!-- Waveform -->
+            <div class="chart-card chart-card--full">
+                <h3 class="chart-title">Audio Waveform</h3>
+                <div class="chart-wrapper">
+                    <canvas id="waveform-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Emotion Confidence Bars -->
+            <div class="chart-card">
+                <h3 class="chart-title">Emotion Confidence Breakdown</h3>
+                <div class="chart-wrapper chart-wrapper--bar">
+                    <canvas id="emotion-bar-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Emotion Radar -->
+            <div class="chart-card">
+                <h3 class="chart-title">Emotion Radar</h3>
+                <div class="chart-wrapper">
+                    <canvas id="emotion-radar-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Timeline (if available) -->
+            <div class="chart-card chart-card--full" id="timeline-section"
+                 style="display:none">
+                <h3 class="chart-title">Emotion Timeline (per 2-second segment)</h3>
+                <div class="chart-wrapper chart-wrapper--timeline">
+                    <canvas id="timeline-chart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Emotion Score Table -->
+        <div class="score-table-card">
+            <h3 class="chart-title">Full Score Breakdown</h3>
+            <div class="score-table">
+                {% set all_scores_sorted = all_scores.items() | sort(attribute='1', reverse=True) %}
+                {% for emotion, score in all_scores_sorted %}
+                <div class="score-row {% if emotion == prediction.predicted_emotion %}score-row--top{% endif %}">
+                    <div class="score-emotion">
+                        <span class="score-emoji">
+                            {{ emotion_icons.get(emotion, '🎤') }}
+                        </span>
+                        {{ emotion }}
+                        {% if emotion == prediction.predicted_emotion %}
+                        <span class="top-badge">TOP</span>
+                        {% endif %}
+                    </div>
+                    <div class="score-bar-wrap">
+                        <div class="score-bar-fill"
+                             style="width: {{ score }}%; background: var(--color-{{ emotion | lower }}, #666)"></div>
+                    </div>
+                    <div class="score-pct">{{ score | round(1) }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-row">
+            <a href="/" class="btn btn--outline">
+                ← Analyze Another
+            </a>
+            <a href="/report/{{ prediction.id }}" class="btn btn--secondary">
+                📄 Download PDF Report
+            </a>
+            <a href="/dashboard" class="btn btn--outline">
+                📊 View Dashboard
+            </a>
+        </div>
+
+    </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer class="footer">
+    <p>VoxMood © 2026 — Speech Emotion Recognition System</p>
+</footer>
+
+<!-- Pass data to JS -->
+<script>
+    const WAVEFORM_DATA    = {{ waveform_data | safe }};
+    const SPECTROGRAM_DATA = {{ spectrogram_data | safe }};
+    const TIMELINE_DATA    = {{ timeline_data | safe }};
+    const ALL_SCORES       = {{ all_scores | tojson }};
+    const EMOTION_COLORS   = {{ emotion_colors | safe }};
+    const PRIMARY_EMOTION  = "{{ prediction.predicted_emotion }}";
+    const CONFIDENCE       = {{ prediction.confidence }};
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/result.js') }}"></script>
+</body>
+</html>
